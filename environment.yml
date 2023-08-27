@@ -1,0 +1,13 @@
+name: IBA-epa-ng
+channels:
+  - conda-forge
+  - bioconda
+  - r
+dependencies:
+  - python
+  - biopython
+  - snakemake
+  - snakefmt
+  - hmmer
+  - epa-ng=0.3.8
+  - gappa

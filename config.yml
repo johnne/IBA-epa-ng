@@ -1,0 +1,7 @@
+input:
+  reference_tree: "data/backbone.nex"
+  reference_msa: "data/lep_backbone_aln.nex"
+  query: "data/lep.fasta"
+  tree_ranks: ["order","family","genus","species"]
+epa-ng:
+  model: "GTR+F+I+I+R10"
