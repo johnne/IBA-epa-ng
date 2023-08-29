@@ -170,5 +170,5 @@ rule gappa2taxdf:
         ranks=config["input"]["tree_ranks"],
     shell:
         """
-        python src/gappa2taxdf.py --ranks {params.ranks} {input} {output}
+        python src/gappa2taxdf.py {input} {output} --ranks {params.ranks} 
         """
