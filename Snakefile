@@ -4,6 +4,11 @@ if os.path.exists("config.yml"):
 
     configfile: "config.yml"
 
+
+def mem_allowed(wildcards, threads):
+    return max(threads * 6400, 6400)
+
+
 localrules:
     nexus2newick,
     extract_ref_taxonomy,
@@ -12,6 +17,7 @@ localrules:
     gappa2taxdf,
     write_config,
     write_software,
+
 
 from snakemake.utils import validate
 
@@ -104,7 +110,7 @@ rule hmm_build:
     log:
         "logs/hmmbuild/{ref}.log",
     resources:
-        runtime = 60
+        runtime=60,
     shell:
         """
         hmmbuild {output} {input} > {log} 2>&1
@@ -121,7 +127,9 @@ rule hmm_align:
     log:
         "logs/hmmalign/hmmalign.{ref}.{run}.log",
     resources:
-        runtime = 120
+        runtime=120,
+        mem_mb=mem_allowed,
+    threads: 4
     shell:
         """
         hmmalign --trim --mapali {input.ref_msa} --outformat afa -o {output} {input.hmm} {input.qry} > {log} 2>&1
@@ -160,7 +168,7 @@ rule raxml_evaluate:
         prefix=lambda wildcards, output: os.path.dirname(output[0]) + "/info",
     threads: 4
     resources:
-        runtime = 60
+        runtime=60,
     shell:
         """
         raxml-ng --threads {threads} --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
@@ -181,7 +189,7 @@ rule epa_ng:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
     threads: 4
     resources:
-        runtime = 60
+        runtime=60,
     shell:
         """
         epa-ng --redo -T {threads} --tree {input.ref_tree} --ref-msa {input.ref_msa} \
@@ -202,6 +210,7 @@ def get_dist_ratio(config):
     else:
         return f"--distribution-ratio {config['gappa']['distribution_ratio']}"
 
+
 rule gappa_assign:
     output:
         "results/gappa/{ref}/{run}/per_query.tsv",
@@ -217,7 +226,7 @@ rule gappa_assign:
         distribution_ratio=get_dist_ratio(config),
     threads: 4
     resources:
-        runtime = 120
+        runtime=120,
     shell:
         """
         gappa examine assign --threads {threads} --out-dir {params.outdir} \
