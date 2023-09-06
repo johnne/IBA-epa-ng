@@ -8,7 +8,7 @@ input:
   reference_msa_format: "nexus"
   query: "data/lep.fasta"
   tree_ranks: ["order","family","genus","species"]
-  ref_taxonomy: "data/backbone_taxon_file.tsv"
+  ref_taxonomy: ""
 epa-ng:
   # Model used for the reference backbone
   model: "GTR+F+I+I+R10"
