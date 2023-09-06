@@ -9,5 +9,5 @@ dependencies:
   - snakemake
   - snakefmt
   - hmmer
-  - epa-ng=0.3.8
+  - epa-ng
   - gappa
