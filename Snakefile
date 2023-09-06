@@ -121,8 +121,6 @@ rule hmm_align:
         ref_msa=ref_msa,
     log:
         "logs/hmmalign/hmmalign.{ref}.{run}.log",
-    conda:
-        "envs/hmmer.yml"
     threads: 4
     resources:
         runtime = 120
