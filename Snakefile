@@ -26,6 +26,11 @@ rule all:
         expand(
             "results/taxonomy/{ref}/{run}/config.yml", run=config["run"], ref=ref_name
         ),
+        expand(
+            "results/taxonomy/{ref}/{run}/software.txt",
+            run=config["run"],
+            ref=ref_name,
+        ),
 
 
 rule nexus2newick:
@@ -176,6 +181,12 @@ def ref_taxonomy(wildcards):
         return rules.extract_ref_taxonomy.output
 
 
+def get_dist_ratio(config):
+    if config["gappa"]["distribution_ratio"] == -1:
+        return ""
+    else:
+        return f"--distribution-ratio {config['gappa']['distribution_ratio']}"
+
 rule gappa_assign:
     output:
         "results/gappa/{ref}/{run}/per_query.tsv",
@@ -188,15 +199,14 @@ rule gappa_assign:
         ranks_string="|".join(config["input"]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         consensus_thresh=config["gappa"]["consensus_thresh"],
-        distribution_ratio=config["gappa"]["distribution_ratio"],
+        distribution_ratio=get_dist_ratio(config),
     threads: 4
     shell:
         """
         gappa examine assign --threads {threads} --out-dir {params.outdir} \
             --jplace-path {input.json} --taxon-file {input.taxonfile} \
             --ranks-string '{params.ranks_string}' --per-query-results \
-            --consensus-thresh {params.consensus_thresh} \
-            --distribution-ratio {params.distribution_ratio} \ 
+            --consensus-thresh {params.consensus_thresh} {params.distribution_ratio} \
             --best-hit --allow-file-overwriting > {log} 2>&1
         """
 
@@ -222,3 +232,12 @@ rule write_config:
 
         with open(output[0], "w") as fhout:
             yaml.safe_dump(config, fhout, default_flow_style=False, sort_keys=False)
+
+
+rule write_software:
+    output:
+        "results/taxonomy/{ref}/{run}/software.txt",
+    shell:
+        """
+        conda list > {output}
+        """
