@@ -1,0 +1,7 @@
+local-cores: 1
+keep-going: "True"
+rerun-incomplete: "True"
+reason: "True"
+printshellcmds: "True"
+
+slurm: "False"

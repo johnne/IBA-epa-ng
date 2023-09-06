@@ -4,6 +4,14 @@ if os.path.exists("config.yml"):
 
     configfile: "config.yml"
 
+localrules:
+    nexus2newick,
+    extract_ref_taxonomy,
+    nexus2fasta,
+    split_aln,
+    gappa2taxdf,
+    write_config,
+    write_software,
 
 from snakemake.utils import validate
 
@@ -95,9 +103,12 @@ rule hmm_build:
         ref_msa,
     log:
         "logs/hmmbuild/{ref}.log",
+    threads: 2
+    resources:
+        runtime = 60
     shell:
         """
-        hmmbuild {output} {input} > {log} 2>&1
+        hmmbuild --cpu {threads} {output} {input} > {log} 2>&1
         """
 
 
@@ -112,9 +123,12 @@ rule hmm_align:
         "logs/hmmalign/hmmalign.{ref}.{run}.log",
     conda:
         "envs/hmmer.yml"
+    threads: 4
+    resources:
+        runtime = 120
     shell:
         """
-        hmmalign --trim --mapali {input.ref_msa} --outformat afa -o {output} {input.hmm} {input.qry} > {log} 2>&1
+        hmmalign --cpu {threads} --trim --mapali {input.ref_msa} --outformat afa -o {output} {input.hmm} {input.qry} > {log} 2>&1
         """
 
 
@@ -148,9 +162,12 @@ rule raxml_evaluate:
     params:
         model=config["epa-ng"]["model"],
         prefix=lambda wildcards, output: os.path.dirname(output[0]) + "/info",
+    threads: 4
+    resources:
+        runtime = 60
     shell:
         """
-        raxml-ng --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
+        raxml-ng --threads {threads} --evaluate --msa {input.msa} --tree {input.tree} --prefix {params.prefix} --model {params.model} >{log} 2>&1
         """
 
 
@@ -167,6 +184,8 @@ rule epa_ng:
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
     threads: 4
+    resources:
+        runtime = 60
     shell:
         """
         epa-ng --redo -T {threads} --tree {input.ref_tree} --ref-msa {input.ref_msa} \
@@ -201,6 +220,8 @@ rule gappa_assign:
         consensus_thresh=config["gappa"]["consensus_thresh"],
         distribution_ratio=get_dist_ratio(config),
     threads: 4
+    resources:
+        runtime = 120
     shell:
         """
         gappa examine assign --threads {threads} --out-dir {params.outdir} \
