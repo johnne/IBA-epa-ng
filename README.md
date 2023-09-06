@@ -109,5 +109,16 @@ results.
 snakemake -j 1 -rpk 
 ```
 
+### Running on SLURM clusters
+
+To run on a compute cluster with the SLURM workload manager, open up the 
+`slurm/config.yaml` file and edit the line with `default-resources: 
+"slurm_account=<your SLURM account>"` by changing `<your SLURM account>` to 
+your actual slurm account. Then run the workflow as: 
+
+```bash
+snakemake --profile slurm 
+```
+
 ### Output
-Main taxonomic output will be in `results/taxonomy/taxonomy.tsv`. 
+Main taxonomic output will be in `"results/taxonomy/{ref}/{run}/taxonomy.tsv"`. 
