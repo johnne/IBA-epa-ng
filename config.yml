@@ -1,6 +1,9 @@
+run: "default"
 input:
   reference_tree: "data/backbone.nex"
+  reference_tree_format: "nexus"
   reference_msa: "data/lep_backbone_aln.nex"
+  reference_msa_format: "nexus"
   query: "data/lep.fasta"
   tree_ranks: ["order","family","genus","species"]
 epa-ng:

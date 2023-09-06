@@ -8,32 +8,48 @@ TREE = config["input"]["reference_tree"]
 REF_MSA = config["input"]["reference_msa"]
 QRY = config["input"]["query"]
 
+ref_name = os.path.splitext(os.path.basename(TREE))[0]
+
 
 rule all:
     input:
-        "results/taxonomy/taxonomy.tsv",
+        expand(
+            "results/taxonomy/{ref}/{run}/taxonomy.tsv",
+            run=config["run"],
+            ref=ref_name,
+        ),
+        expand(
+            "results/taxonomy/{ref}/{run}/config.yml", run=config["run"], ref=ref_name
+        ),
 
 
 rule nexus2newick:
     output:
-        "results/ref_tree/backbone.nwk",
+        "results/ref_tree/{ref}.nwk",
     input:
-        TREE,
+        config["input"]["reference_tree"],
     log:
-        "logs/conversions/nexus2newick.log",
+        "logs/conversions/nexus2newick.{ref}.log",
     shell:
         """
         python src/nexus2newick.py {input} {output} >{log} 2>&1
         """
 
 
+def ref_tree(wildcards):
+    if config["input"]["reference_tree_format"] == "nexus":
+        return rules.nexus2newick.output[0]
+    elif config["input"]["reference_tree_format"] == "newick":
+        return config["reference_tree"]
+
+
 rule extract_ref_taxonomy:
     output:
-        "results/ref_taxonomy/taxon_file.tsv",
+        "results/ref_taxonomy/{ref}_taxon_file.tsv",
     input:
-        rules.nexus2newick.output,
+        ref_tree,
     log:
-        "logs/extract_ref_taxonomy.log",
+        "logs/extract_ref_taxonomy.{ref}.log",
     params:
         ranks=config["input"]["tree_ranks"],
     shell:
@@ -44,24 +60,31 @@ rule extract_ref_taxonomy:
 
 rule nexus2fasta:
     output:
-        "results/ref_aln/ref.fasta",
+        "results/ref_aln/{ref}.fasta",
     input:
-        REF_MSA,
+        config["input"]["reference_msa"],
     log:
-        "logs/conversion/nexus2fasta.log",
+        "logs/conversion/nexus2fasta.{ref}.log",
     shell:
         """
         python src/convertalign.py {input} nexus {output} fasta >{log} 2>&1
         """
 
 
+def ref_msa(wildcards):
+    if config["input"]["reference_msa_format"] == "nexus":
+        return rules.nexus2fasta.output[0]
+    elif config["input"]["reference_msa_format"] == "fasta":
+        return config["input"]["reference_msa"]
+
+
 rule hmm_build:
     output:
-        "results/ref_aln/ref.fasta.hmm",
+        "results/ref_aln/{ref}.fasta.hmm",
     input:
-        rules.nexus2fasta.output,
+        ref_msa,
     log:
-        "logs/hmmbuild/ref.aln.log",
+        "logs/hmmbuild/{ref}.log",
     shell:
         """
         hmmbuild {output} {input} > {log} 2>&1
@@ -70,13 +93,13 @@ rule hmm_build:
 
 rule hmm_align:
     output:
-        "results/hmmalign/qry_ref.fasta",
+        "results/hmmalign/{ref}.{run}.fasta",
     input:
         hmm=rules.hmm_build.output,
         qry=QRY,
-        ref_msa=rules.nexus2fasta.output,
+        ref_msa=ref_msa,
     log:
-        "logs/hmmalign/hmmalign.log",
+        "logs/hmmalign/hmmalign.{ref}.{run}.log",
     conda:
         "envs/hmmer.yml"
     shell:
@@ -87,29 +110,31 @@ rule hmm_align:
 
 rule split_aln:
     output:
-        ref_msa="results/hmmalign/reference.fasta",
-        qry_msa="results/hmmalign/query.fasta",
+        ref_msa="results/hmmalign/{run}/{ref}.fasta",
+        qry_msa="results/hmmalign/{run}/query.{ref}.fasta",
     input:
-        ref_msa=rules.nexus2fasta.output,
+        ref_msa=ref_msa,
         msa=rules.hmm_align.output,
     log:
-        "logs/epa-ng/split.log",
+        "logs/epa-ng/split{ref}.{run}.log",
     params:
         outdir=lambda wildcards, output: os.path.dirname(output.ref_msa),
     shell:
         """
-        epa-ng --out-dir {params.outdir} --split {input.ref_msa} {input.msa} > {log} 2>&1
+        epa-ng --redo --out-dir {params.outdir} --split {input.ref_msa} {input.msa} > {log} 2>&1
+        mv {params.outdir}/query.fasta {output.qry_msa}
+        mv {params.outdir}/reference.fasta {output.ref_msa}
         """
 
 
 rule raxml_evaluate:
     output:
-        "results/raxml-ng/info.raxml.bestModel",
+        "results/raxml-ng/{run}/{ref}/info.raxml.bestModel",
     input:
         tree=rules.nexus2newick.output,
         msa=rules.split_aln.output.ref_msa,
     log:
-        "logs/raxml-ng/raxml-ng.log",
+        "logs/raxml-ng/raxml-ng.{run}.{ref}.log",
     params:
         model=config["epa-ng"]["model"],
         prefix=lambda wildcards, output: os.path.dirname(output[0]) + "/info",
@@ -121,16 +146,15 @@ rule raxml_evaluate:
 
 rule epa_ng:
     output:
-        "results/epa-ng/epa_result.jplace",
+        "results/epa-ng/{ref}/{run}/epa_result.jplace",
     input:
         qry=rules.split_aln.output.qry_msa,
         ref_msa=rules.split_aln.output.ref_msa,
-        ref_tree=rules.nexus2newick.output,
+        ref_tree=ref_tree,
         info=rules.raxml_evaluate.output,
     log:
-        "logs/epa-ng/epa-ng.log",
+        "logs/epa-ng/{ref}/epa-ng.{run}.log",
     params:
-        #model = config["epa-ng"]["model"],
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
     threads: 4
     shell:
@@ -142,12 +166,12 @@ rule epa_ng:
 
 rule gappa_assign:
     output:
-        "results/gappa/per_query.tsv",
+        "results/gappa/{ref}/{run}/per_query.tsv",
     input:
         json=rules.epa_ng.output,
         taxonfile=rules.extract_ref_taxonomy.output,
     log:
-        "logs/gappa/gappa.log",
+        "logs/gappa/{ref}/gappa.{run}.log",
     params:
         ranks_string="|".join(config["input"]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
@@ -163,7 +187,7 @@ rule gappa_assign:
 
 rule gappa2taxdf:
     output:
-        "results/taxonomy/taxonomy.tsv",
+        "results/taxonomy/{ref}/{run}/taxonomy.tsv",
     input:
         rules.gappa_assign.output[0],
     params:
@@ -172,3 +196,13 @@ rule gappa2taxdf:
         """
         python src/gappa2taxdf.py {input} {output} --ranks {params.ranks} 
         """
+
+
+rule write_config:
+    output:
+        "results/taxonomy/{ref}/{run}/config.yml",
+    run:
+        import yaml
+
+        with open(output[0], "w") as fhout:
+            yaml.safe_dump(config, fhout, default_flow_style=False, sort_keys=False)
