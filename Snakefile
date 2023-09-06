@@ -1,8 +1,13 @@
 import os
 
+if os.path.exists("config.yml"):
 
-configfile: "config.yml"
+    configfile: "config.yml"
 
+
+from snakemake.utils import validate
+
+validate(config, "schema/config.schema.yaml")
 
 TREE = config["input"]["reference_tree"]
 REF_MSA = config["input"]["reference_msa"]
@@ -40,7 +45,7 @@ def ref_tree(wildcards):
     if config["input"]["reference_tree_format"] == "nexus":
         return rules.nexus2newick.output[0]
     elif config["input"]["reference_tree_format"] == "newick":
-        return config["reference_tree"]
+        return config["input"]["reference_tree"]
 
 
 rule extract_ref_taxonomy:
@@ -164,23 +169,34 @@ rule epa_ng:
         """
 
 
+def ref_taxonomy(wildcards):
+    if config["input"]["ref_taxonomy"]:
+        return config["input"]["ref_taxonomy"]
+    else:
+        return rules.extract_ref_taxonomy.output
+
+
 rule gappa_assign:
     output:
         "results/gappa/{ref}/{run}/per_query.tsv",
     input:
         json=rules.epa_ng.output,
-        taxonfile=rules.extract_ref_taxonomy.output,
+        taxonfile=ref_taxonomy,
     log:
         "logs/gappa/{ref}/gappa.{run}.log",
     params:
         ranks_string="|".join(config["input"]["tree_ranks"]),
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
+        consensus_thresh=config["gappa"]["consensus_thresh"],
+        distribution_ratio=config["gappa"]["distribution_ratio"],
     threads: 4
     shell:
         """
         gappa examine assign --threads {threads} --out-dir {params.outdir} \
             --jplace-path {input.json} --taxon-file {input.taxonfile} \
             --ranks-string '{params.ranks_string}' --per-query-results \
+            --consensus-thresh {params.consensus_thresh} \
+            --distribution-ratio {params.distribution_ratio} \ 
             --best-hit --allow-file-overwriting > {log} 2>&1
         """
 
