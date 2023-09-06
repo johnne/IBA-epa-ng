@@ -103,12 +103,11 @@ rule hmm_build:
         ref_msa,
     log:
         "logs/hmmbuild/{ref}.log",
-    threads: 2
     resources:
         runtime = 60
     shell:
         """
-        hmmbuild --cpu {threads} {output} {input} > {log} 2>&1
+        hmmbuild {output} {input} > {log} 2>&1
         """
 
 
@@ -121,12 +120,11 @@ rule hmm_align:
         ref_msa=ref_msa,
     log:
         "logs/hmmalign/hmmalign.{ref}.{run}.log",
-    threads: 4
     resources:
         runtime = 120
     shell:
         """
-        hmmalign --cpu {threads} --trim --mapali {input.ref_msa} --outformat afa -o {output} {input.hmm} {input.qry} > {log} 2>&1
+        hmmalign --trim --mapali {input.ref_msa} --outformat afa -o {output} {input.hmm} {input.qry} > {log} 2>&1
         """
 
 
