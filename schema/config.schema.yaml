@@ -1,0 +1,61 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+
+description: snakemake configuration file
+
+type: object
+
+properties:
+  run:
+    type: string
+    description: "Name of workflow run"
+    default: "default"
+  input:
+    type: object
+    properties:
+      reference_tree:
+        type: string
+        description: "Path to reference backbone phylogeny"
+        default: "data/backbone.nex"
+      reference_tree_format:
+        type: string
+        description: "Format of reference backbone"
+        default: "nexus"
+        enum: ["newick", "nexus"]
+      reference_msa:
+        type: string
+        description: "Path to reference backbone MSA"
+        default: "data/lep_aln.nex"
+      reference_msa_format:
+        type: string
+        description: "Format of reference backbone MSA"
+        default: "nexus"
+        enum: ["fasta", "nexus"]
+      query:
+        type: string
+        description: "Path to query sequences in fasta format"
+        default: "data/lep.fasta"
+      tree_ranks:
+        type: array
+        description: "List of ranks to assign"
+        default: ["order","family","genus","species"]
+      ref_taxonomy:
+        type: string
+        description: "Optional path to tab-separated file with taxonomic labels for each leaf in the backbone"
+  epa-ng:
+    type: object
+    properties:
+      model:
+        type: string
+        description: "Model used for backbone phylogeny"
+        default: "GTR+F+I+I+R10"
+  gappa:
+    type: object
+    properties:
+      distribution_ratio:
+        type: number
+        description: "Ratio by which LWR is split between annotations"
+        default: -1
+      consensus_thresh:
+        type: number
+        description: "For assignment of taxonomic labels to the reference tree, require this consensus threshold"
+        default: 1

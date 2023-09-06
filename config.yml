@@ -1,4 +1,6 @@
+# Give the configuration a name for downstream reference
 run: "default"
+# Set input options
 input:
   reference_tree: "data/backbone.nex"
   reference_tree_format: "nexus"
@@ -6,5 +8,17 @@ input:
   reference_msa_format: "nexus"
   query: "data/lep.fasta"
   tree_ranks: ["order","family","genus","species"]
+  ref_taxonomy: "data/backbone_taxon_file.tsv"
 epa-ng:
+  # Model used for the reference backbone
   model: "GTR+F+I+I+R10"
+gappa:
+  # Ratio by which LWR is split between annotations if an edge has two possible
+  # annotations. Specifies the amount going to the proximal annotation. If not
+  # set program will determine the ratio automatically from the 'distal length'
+  # specified per placement.
+  distribution-ratio: -1
+  # For assignment of taxonomic labels to the reference tree, require this
+  # consensus threshold. Example: if set to 0.6, and 60% of an inner node's
+  # descendants share a taxonomic path, set that path at the inner node.
+  consensus-thresh: 1
